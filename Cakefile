@@ -10,33 +10,40 @@ task 'watch', 'watches and compiles coffee file', (options) ->
   output = options.output or 'app/webroot/js/app.js'
   watchs = new Array()
 
-  main = () -> 
+  init = () ->
+    return
+
+  run = (cb) ->
+    console.log """\n
+--------------- \x1b[33mStart to watch directory and compiling\x1b[39m -------------------
+  target directory -> #{target}
+  output directory -> #{output}
+--------------------------------------------------------------------------
+\x1b[36mWatch File List:\x1b[39m
+    """
+    watch_for_change(target, cb)
+
+  watch_for_change = (target, cb) ->
     fs.stat target, (err, stats) ->
       if stats.isDirectory()
-        searchDirectory(target)
+        watch_for_change_in_dir(target, cb)
       else if stats.isFile()
-        watchFile(target)
+        watch(target)
       else
         return
 
-  searchDirectory = (dir) ->
+  watch_for_change_in_dir = (dir, cb) ->
     fs.readdir dir, (err, files) ->
       files.forEach (file) ->
         current = "#{dir}/#{file}"
-        fs.stat current, (err, stats) ->
-          if stats.isDirectory()
-            searchDirectory(current)
-          else if stats.isFile()
-            watchFile(current)
+        watch_for_change(current, cb)
+    return
 
-  watchFile = (file) ->
+  watch = (file, cb) ->
     if file.match(/.coffee$/) == null
       return
-
     console.log "#{file}"
-
     watchs.push(file)
-
     fs.watchFile file, (cur, prev) ->
       if file && +cur.mtime != +prev.mtime
         text  = "\n\x1b[36mCompiling...\x1b[39m\n"
@@ -44,9 +51,10 @@ task 'watch', 'watches and compiles coffee file', (options) ->
         text += "Modified File: #{file}\n"
         console.log text
         compile()
-
-  # ファイル名順に結合する為、監視ファイルは頭に(数字.)付与推奨
-  compile = () ->
+    return
+  
+  # ファイル名順に結合
+  compile= () ->
     filelist = []
     watchs.forEach (watch) ->
       filelist.push({'file' : path.basename(watch), 'path': watch})
@@ -54,7 +62,7 @@ task 'watch', 'watches and compiles coffee file', (options) ->
     key = 'file'
     filelist.sort (b1, b2) ->
       return b1[key] > b2[key] ? 1 : -1
-    
+
     pathlist = []
     filelist.forEach (file) ->
       pathlist.push(file.path)
@@ -72,16 +80,4 @@ task 'watch', 'watches and compiles coffee file', (options) ->
       else
         console.log "\x1b[31mFailed!\n" + stdout + stderr + "\x1b[39m"
 
-    
-  # initial compile
-  console.log """\n
---------------- \x1b[33mStart to watch directory and compiling\x1b[39m -------------------
-  target directory -> #{target}
-  output directory -> #{output}
---------------------------------------------------------------------------
-\x1b[36mWatch File List:\x1b[39m
-  """
-  # watch
-  main()
-
- 
+  run()
